@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joc de Geografia - Àsia</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Poppins', sans-serif; background-color: #1a1a1a; color: #fff; overflow: hidden; }
+        #ui-container { position: absolute; top: 0; left: 0; width: 100%; z-index: 1000; pointer-events: none; }
+        .header { background: rgba(20, 25, 40, 0.9); backdrop-filter: blur(10px); padding: 15px 30px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 4px 15px rgba(0,0,0,0.5); pointer-events: auto; border-bottom: 2px solid #3b82f6; }
+        .header-left { display: flex; flex-direction: column; gap: 10px; }
+        
+        /* Controls i Botons */
+        .btn-control { background: #8b5cf6; color: white; border: none; padding: 8px 16px; font-size: 0.9rem; font-family: 'Poppins', sans-serif; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.3s; }
+        .btn-control:hover { background: #7c3aed; }
+        .btn-control.estudi-actiu { background: #f59e0b; }
+        .btn-control.estudi-actiu:hover { background: #d97706; }
+        .btn-mapa { background: #059669; }
+        .btn-mapa:hover { background: #047857; }
+        
+        /* Buscador Mode Estudi */
+        #search-container { display: none; margin-top: 5px; position: relative; }
+        #search-input { padding: 8px 12px; width: 220px; border-radius: 6px; border: 1px solid #f59e0b; background: rgba(31, 41, 55, 0.9); color: white; font-family: 'Poppins', sans-serif; outline: none; }
+        #search-input::placeholder { color: #9ca3af; }
+        #search-results { position: absolute; top: 100%; left: 0; width: 100%; background: rgba(31, 41, 55, 0.95); border-radius: 6px; border: 1px solid #4b5563; max-height: 200px; overflow-y: auto; z-index: 2000; margin-top: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: none; }
+        .search-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #374151; font-size: 0.9rem; transition: background 0.2s; color: #fff; }
+        .search-item:hover { background: #f59e0b; color: #000; font-weight: bold; }
+
+        /* Caixes d'informació */
+        .target-box { text-align: center; display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 10px; border: 1px solid #374151; min-width: 300px; }
+        .target-title { font-size: 0.9rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; }
+        .target-name { font-size: 1.8rem; font-weight: 800; color: #fbbf24; margin: 5px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .hint-btn { background: #3b82f6; color: white; border: none; padding: 5px 12px; font-size: 0.8rem; border-radius: 4px; cursor: pointer; margin-top: 5px; font-family: 'Poppins', sans-serif; }
+        .hint-btn:hover { background: #2563eb; }
+        .hint-display { font-size: 0.95rem; color: #a78bfa; margin-top: 10px; font-weight: 600; max-width: 400px; text-align: center; display: none; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 5px; border: 1px solid #4c1d95; }
+        .stats-box { display: flex; gap: 20px; }
+        .stat { background: rgba(255, 255, 255, 0.1); padding: 10px 20px; border-radius: 8px; text-align: center; border: 1px solid #374151; }
+        .stat-value { font-size: 1.5rem; font-weight: 800; }
+        .intentos { color: #ef4444; }
+        .puntuacio { color: #10b981; }
+        
+        /* Mapa i Modal */
+        #map { width: 100%; height: 100%; z-index: 1; background-color: #0f172a; }
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; pointer-events: auto; }
+        .modal-content { background: #1f2937; padding: 40px; border-radius: 15px; text-align: center; border: 2px solid #3b82f6; max-width: 400px; }
+        .modal-content h1 { margin-top: 0; color: #fbbf24; font-size: 2.2rem; }
+        .modal-content p { font-size: 1.2rem; color: #d1d5db; margin: 15px 0; }
+        .modal-content button { background: #3b82f6; color: white; border: none; padding: 12px 24px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin-top: 20px; font-weight: 800; width: 100%; }
+        .modal-content button:hover { background: #2563eb; }
+        
+        /* Marcadors i Popups */
+        .custom-marker { background-color: rgba(59, 130, 246, 0.6); border: 2px solid #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 6px rgba(0,0,0,0.8); }
+        .custom-marker:hover { background-color: rgba(251, 191, 36, 0.9); border-color: #fff; z-index: 1000 !important; }
+        .leaflet-popup-content-wrapper { background: #1f2937; color: #fff; border-radius: 8px; border: 1px solid #4b5563; }
+        .leaflet-popup-tip { background: #1f2937; }
+        .study-popup { text-align: center; padding: 5px; }
+        .study-popup h3 { margin: 0 0 8px 0; color: #fbbf24; font-size: 1.15rem; font-weight: 800; }
+        .study-popup p { margin: 0; font-size: 0.95rem; color: #d1d5db; }
+        .leaflet-tooltip { background: rgba(16, 185, 129, 0.95); border: 1px solid #059669; color: white; font-family: 'Poppins', sans-serif; font-weight: 800; border-radius: 4px; }
+        .tooltip-error { background: rgba(245, 158, 11, 0.95) !important; border: 1px solid #d97706 !important; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="header">
+            <div class="header-left">
+                <h2 style="margin: 0 0 5px 0; font-size: 1.2rem;">Geografia d'Àsia</h2>
+                <button id="btn-mode" class="btn-control" onclick="alternarMode()">Canviar a Mode Estudi</button>
+                <button id="btn-capa" class="btn-control btn-mapa" onclick="alternarCapaMapa()">Posar Mapa Fosc</button>
+                
+                <div id="search-container">
+                    <input type="text" id="search-input" placeholder="Cerca un lloc (ex: Ganges)..." onkeyup="cercarLloc()">
+                    <div id="search-results"></div>
+                </div>
+            </div>
+            
+            <div class="target-box">
+                <div class="target-title" id="target-label">On és...</div>
+                <div id="target-name" class="target-name">Preparant...</div>
+                <button id="btn-pista" class="hint-btn" onclick="mostrarPista()">Veure Pista</button>
+                <div id="hint-text" class="hint-display"></div>
+            </div>
+            
+            <div class="stats-box">
+                <div class="stat">
+                    <div class="target-title">Intents per paraula</div>
+                    <div id="attempts" class="stat-value intentos">4</div>
+                </div>
+                <div class="stat">
+                    <div class="target-title">Encerts</div>
+                    <div id="score" class="stat-value puntuacio">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <h1 id="modal-title">Joc Finalitzat!</h1>
+            <p>Has encertat <strong id="final-score" style="color: #10b981;">0</strong> topònims de <span id="total-targets"></span>.</p>
+            <button onclick="reiniciarJoc()">Tornar a jugar</button>
+        </div>
+    </div>
+
+    <script>
+        // LLISTA EXACTA DE LA FOTO DEL PAPER DE VICENS VIVES + CORRECCIÓ DE CIMS
+        const targetLocations = [
+            // LÍMITS
+            { id: "caucas", name: "Serralada del Caucas", lat: 42.5, lng: 45.0, hint: "Límit amb Europa, entre el Mar Negre i el Mar Caspi." },
+            { id: "urals", name: "Serralada dels Urals", lat: 60.0, lng: 59.0, hint: "Límit nord amb Europa, a Rússia." },
+            { id: "bering", name: "Estret de Bering", lat: 65.9, lng: -169.0, hint: "Límit amb Amèrica, extrem nord-est." },
+            
+            // CIMS
+            { id: "everest", name: "Everest", lat: 27.9881, lng: 86.9250, hint: "El cim més alt del món, situat a l'Himàlaia." },
+            { id: "k2", name: "K2", lat: 35.8809, lng: 76.5151, hint: "El segon cim més alt del món, a la serralada del Karakorum." },
+
+            // UNITATS DE RELLEU
+            { id: "zagros", name: "Serralada dels Zagros", lat: 33.0, lng: 50.0, hint: "Serralada que creua l'Iran." },
+            { id: "himalaia", name: "Serralada de l'Himàlaia", lat: 27.9, lng: 86.9, hint: "La serralada més alta, al nord de l'Índia." },
+            { id: "kunlun", name: "Muntanyes Kunlun", lat: 36.0, lng: 84.0, hint: "Al nord de l'altiplà del Tibet." },
+            { id: "tianshan", name: "Tian Shan", lat: 42.0, lng: 80.0, hint: "Serralada al nord-oest de la Xina." },
+            { id: "altai", name: "Altai", lat: 49.0, lng: 89.0, hint: "On s'uneixen Rússia, Xina, Mongòlia i Kazakhstan." },
+            { id: "hindukush", name: "Hindukush", lat: 35.0, lng: 71.0, hint: "Muntanyes entre Afganistan i Pakistan." },
+            { id: "taure", name: "Muntanyes del Taure", lat: 37.0, lng: 33.0, hint: "Voregen la costa sud de Turquia (Anatòlia)." },
+            { id: "plana_sib_occ", name: "Plana de la Sibèria Occidental", lat: 62.0, lng: 75.0, hint: "Gran plana russa entre els Urals i el riu Ienissei." },
+            { id: "gran_plana_xina", name: "Gran plana de la Xina", lat: 35.0, lng: 115.0, hint: "A l'est de la Xina." },
+            { id: "plana_ganges", name: "Plana del Ganges", lat: 25.0, lng: 82.0, hint: "Plana al nord de l'Índia, sota l'Himàlaia." },
+            { id: "plana_manxuria", name: "Plana de Manxúria", lat: 45.0, lng: 125.0, hint: "Al nord-est de la Xina." },
+
+            // ALTIPLANS I DESERTS
+            { id: "sib_central", name: "Altiplà de la Sibèria Central", lat: 62.0, lng: 100.0, hint: "Massís al cor de la Sibèria russa." },
+            { id: "tibet", name: "Altiplà del Tibet", lat: 33.0, lng: 88.0, hint: "El Sostre del Món, per sobre de l'Himàlaia." },
+            { id: "iran_alt", name: "Altiplà de l'Iran", lat: 32.0, lng: 53.0, hint: "Ocupa gran part de l'Iran." },
+            { id: "decan", name: "Altiplà del Dècan", lat: 17.0, lng: 77.0, hint: "Ocupa el gran centre de la península de l'Índia." },
+            { id: "pamir", name: "Altiplà del Pamir", lat: 38.0, lng: 73.0, hint: "L'esnus o nus de muntanyes a l'Àsia Central (Tadjikistan)." },
+            { id: "gobi", name: "Desert de Gobi", lat: 43.0, lng: 105.0, hint: "Gran desert entre la Xina i Mongòlia." },
+            { id: "taklamakan", name: "Desert de Taklamakan", lat: 38.9, lng: 82.0, hint: "Desert dins la conca del Tarim, Xina." },
+            { id: "rub_alkhali", name: "Desert de Rub al-Khali", lat: 20.0, lng: 50.0, hint: "Gran desert de sorra al sud de la Península Aràbiga." },
+
+            // ILLES I ARXIPÈLAGS
+            { id: "srilanka", name: "Sri Lanka", lat: 7.8, lng: 80.7, hint: "Illa just al sud de la punta de l'Índia." },
+            { id: "java", name: "Java", lat: -7.5, lng: 110.0, hint: "Illa d'Indonèsia, al sud de Borneo." },
+            { id: "borneo", name: "Kalimantan/Borneo", lat: 0.0, lng: 114.0, hint: "Gran illa al centre d'Indonèsia, creuada per l'Equador." },
+            { id: "sumatra", name: "Sumatra", lat: -0.5, lng: 102.0, hint: "Illa llarga d'Indonèsia a l'oest de Malàisia." },
+            { id: "taiwan", name: "Taiwan", lat: 23.7, lng: 121.0, hint: "Illa propera a la costa est de la Xina." },
+            { id: "filipines", name: "Illes Filipines", lat: 12.0, lng: 122.0, hint: "Arxipèlag a l'est del mar de la Xina." },
+            { id: "japoneses", name: "Illes Japoneses", lat: 36.0, lng: 138.0, hint: "Arxipèlag del Japó." },
+            { id: "maldives", name: "Maldives", lat: 3.2, lng: 73.2, hint: "Petit arxipèlag al sud-oest de l'Índia." },
+
+            // GOLFS
+            { id: "persic", name: "Golf Pèrsic", lat: 26.0, lng: 52.0, hint: "Entre la península Aràbiga i l'Iran." },
+            { id: "bengala", name: "Golf de Bengala", lat: 15.0, lng: 90.0, hint: "A l'est de l'Índia." },
+            { id: "oman", name: "Golf d'Oman", lat: 24.5, lng: 59.0, hint: "Sortint del golf Pèrsic." },
+            { id: "aden", name: "Golf d'Aden", lat: 12.0, lng: 48.0, hint: "Al sud de la península Aràbiga." },
+            { id: "siam", name: "Golf de Siam", lat: 9.0, lng: 102.0, hint: "A l'est de la península de Malacca, sota Tailàndia." },
+            { id: "tonquin", name: "Golf de Tonquin", lat: 19.5, lng: 107.0, hint: "Entre el nord del Vietnam i la Xina." },
+
+            // ESTRETS
+            { id: "ormuz", name: "Estret d'Ormuz", lat: 26.5, lng: 56.2, hint: "Connecta el Pèrsic amb el golf d'Oman." },
+            { id: "malaca_estret", name: "Estret de Malaca", lat: 4.0, lng: 99.5, hint: "Entre la península de Malacca i Sumatra." },
+
+            // PENÍNSULES
+            { id: "arabiga", name: "Península Aràbiga", lat: 23.0, lng: 46.0, hint: "La gran península on hi ha l'Aràbia Saudita." },
+            { id: "hindustan", name: "Península de l'Hindustan", lat: 18.0, lng: 77.0, hint: "La península de l'Índia." },
+            { id: "indoxina", name: "Península d'Indoxina", lat: 15.0, lng: 102.0, hint: "On hi ha el Vietnam, Tailàndia, etc." },
+            { id: "kamtxatka", name: "Península de Kamtxatka", lat: 57.0, lng: 159.0, hint: "Península a l'extrem orient de Rússia, plena de volcans." },
+            { id: "malaca_pen", name: "Península de Malacca", lat: 4.5, lng: 101.5, hint: "Península estreta i llarga on hi ha Malàisia." },
+            { id: "corea", name: "Península de Corea", lat: 38.0, lng: 127.0, hint: "Al nord de la Xina, cap al Japó." },
+            { id: "taimir", name: "Península de Taimir", lat: 74.0, lng: 98.0, hint: "Península molt al nord de la Rússia siberiana." },
+
+            // RIUS
+            { id: "iangtse", name: "Riu Iangtsé (Blau)", lat: 31.3, lng: 121.8, hint: "Desemboca prop de Xangai (Xina)." },
+            { id: "obi", name: "Riu Obi / Obi-Irtix", lat: 66.5, lng: 71.5, hint: "Riu rus occidental, desemboca al nord al golf d'Obi." },
+            { id: "huanghe", name: "Huang He (Riu Groc)", lat: 37.7, lng: 119.1, hint: "Riu al nord de la Xina." },
+            { id: "mekong", name: "Riu Mekong", lat: 10.2, lng: 106.6, hint: "Creua Indoxina i desemboca al Vietnam." },
+            { id: "amur", name: "Riu Amur (Heilong)", lat: 52.9, lng: 141.0, hint: "Fa frontera entre Rússia i Xina. Desemboca al Pacífic." },
+            { id: "lena", name: "Riu Lena", lat: 73.0, lng: 127.0, hint: "Riu rus oriental. Desemboca a l'Àrtic." },
+            { id: "ienissei", name: "Riu Ienissei", lat: 70.0, lng: 83.0, hint: "Riu central de Sibèria, separa plana i altiplà." },
+            { id: "indus", name: "Riu Indus", lat: 23.9, lng: 67.4, hint: "Travessa el Pakistan i desemboca al Mar d'Aràbia." },
+            { id: "ganges", name: "Riu Ganges", lat: 21.8, lng: 90.3, hint: "El riu sagrat de l'Índia." },
+            { id: "eufrates", name: "Riu Eufrates", lat: 30.5, lng: 47.8, hint: "Riu occidental de Mesopotàmia." },
+            { id: "tigris", name: "Riu Tigris", lat: 31.0, lng: 47.4, hint: "Riu oriental de Mesopotàmia." },
+
+            // LLACS I MARS
+            { id: "baikal", name: "Llac Baikal", lat: 53.5, lng: 108.0, hint: "Llac allargat al sud de Sibèria. El més profund." },
+            { id: "balqash", name: "Llac Balqash", lat: 46.5, lng: 74.5, hint: "Llac llarg al Kazakhstan." },
+            { id: "aral", name: "Mar d'Aral", lat: 45.0, lng: 59.5, hint: "Llac a l'Àsia Central gairebé assecat." },
+            { id: "caspi", name: "Mar Caspi", lat: 42.0, lng: 50.5, hint: "Gran llac interior entre Europa i Àsia." }
+        ];
+
+        // CONFIGURACIÓ MAPA
+        const map = L.map('map', { center: [38.0, 90.0], zoom: 4, minZoom: 2, maxZoom: 7, zoomControl: false });
+
+        const capaFisica = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+}).addTo(map);
+        const capaFosca = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; Carto'
+        });
+
+        let mapaActualEsFosc = false;
+        capaFisica.addTo(map);
+
+        function alternarCapaMapa() {
+            const btn = document.getElementById('btn-capa');
+            if (mapaActualEsFosc) {
+                map.removeLayer(capaFosca);
+                capaFisica.addTo(map);
+                mapaActualEsFosc = false;
+                btn.innerText = "Posar Mapa Fosc";
+            } else {
+                map.removeLayer(capaFisica);
+                capaFosca.addTo(map);
+                mapaActualEsFosc = true;
+                btn.innerText = "Posar Mapa Físic";
+            }
+        }
+
+        let markers = {};
+        let isStudyMode = false;
+        let pendingExamenTargets = [];
+        let currentTarget = null;
+        let attempts = 4;
+        let score = 0;
+
+        function createMarkers() {
+            targetLocations.forEach(loc => {
+                const icon = L.divIcon({ className: 'custom-marker', iconSize: [16, 16], iconAnchor: [8, 8] });
+                const marker = L.marker([loc.lat, loc.lng], { icon: icon }).addTo(map);
+                
+                // Guardem el contingut del popup però NO el lliguem encara (perquè comencem en mode examen)
+                marker.myPopupContent = `<div class="study-popup"><h3>${loc.name}</h3><p>${loc.hint}</p></div>`;
+                
+                marker.on('click', () => handleMarkerClick(loc.id));
+                markers[loc.id] = marker;
+            });
+        }
+
+        function handleMarkerClick(clickedId) {
+            if (isStudyMode) return; 
+
+            if (clickedId === currentTarget.id) {
+                // ACERT
+                const m = markers[clickedId];
+                m.getElement().style.backgroundColor = 'rgba(16, 185, 129, 0.9)'; // Verd
+                m.getElement().style.borderColor = '#10b981';
+                m.getElement().style.pointerEvents = 'none';
+                
+                m.bindTooltip(currentTarget.name, { permanent: true, direction: 'top', offset: [0, -10] }).openTooltip();
+                
+                score++;
+                document.getElementById('score').innerText = score;
+                setTimeout(() => { pickNextTarget(); }, 1000);
+            } else {
+                // FALLO
+                attempts--;
+                document.getElementById('attempts').innerText = attempts;
+                
+                const errMarker = markers[clickedId].getElement();
+                errMarker.style.backgroundColor = 'rgba(239, 68, 68, 0.9)'; // Vermell
+                errMarker.style.borderColor = '#f87171';
+
+                setTimeout(() => { 
+                    if (errMarker.style.backgroundColor !== 'rgba(16, 185, 129, 0.9)' && errMarker.style.backgroundColor !== 'rgba(245, 158, 11, 0.9)') {
+                        errMarker.style.backgroundColor = 'rgba(59, 130, 246, 0.6)';
+                        errMarker.style.borderColor = '#fff';
+                    }
+                }, 500);
+
+                if (attempts <= 0) {
+                    const correctMarker = markers[currentTarget.id];
+                    correctMarker.getElement().style.backgroundColor = 'rgba(245, 158, 11, 0.9)';
+                    correctMarker.getElement().style.borderColor = '#d97706';
+                    correctMarker.getElement().style.pointerEvents = 'none';
+                    correctMarker.bindTooltip("Era aquí: " + currentTarget.name, { permanent: true, direction: 'top', offset: [0, -10], className: 'tooltip-error' }).openTooltip();
+                    
+                    setTimeout(() => { pickNextTarget(); }, 2000); 
+                }
+            }
+        }
+
+        // FUNCIONALITAT DEL BUSCADOR
+        function cercarLloc() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = '';
+            
+            if (!query) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            const matches = targetLocations.filter(loc => loc.name.toLowerCase().includes(query));
+            
+            if (matches.length > 0) {
+                resultsDiv.style.display = 'block';
+                matches.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'search-item';
+                    div.innerText = match.name;
+                    div.onclick = () => {
+                        // Viatjar al punt i obrir info
+                        map.setView([match.lat, match.lng], 5, { animate: true });
+                        markers[match.id].openPopup();
+                        
+                        // Netejar buscador
+                        document.getElementById('search-input').value = '';
+                        resultsDiv.style.display = 'none';
+                    };
+                    resultsDiv.appendChild(div);
+                });
+            } else {
+                resultsDiv.style.display = 'none';
+            }
+        }
+
+        function alternarMode() {
+            const btn = document.getElementById('btn-mode');
+            isStudyMode = !isStudyMode;
+
+            if (isStudyMode) {
+                // ACTIVAR MODE ESTUDI
+                btn.innerText = "Tornar a Mode Examen";
+                btn.classList.add('estudi-actiu');
+                document.getElementById('target-label').innerText = "MODE ESTUDI";
+                document.getElementById('target-name').innerText = "Clica els cercles o busca";
+                document.getElementById('hint-text').style.display = 'none';
+                document.getElementById('btn-pista').style.display = 'none';
+                document.querySelector('.stats-box').style.opacity = '0.3';
+                
+                // Mostrar buscador
+                document.getElementById('search-container').style.display = 'block';
+                
+                Object.values(markers).forEach(m => {
+                    m.getElement().style.pointerEvents = 'auto';
+                    m.unbindTooltip();
+                    // Lliguem els popups perquè ens diguin què és cadascun
+                    m.bindPopup(m.myPopupContent, { closeButton: false, offset: [0, -5] });
+                    m.getElement().style.backgroundColor = 'rgba(245, 158, 11, 0.8)';
+                    m.getElement().style.borderColor = '#fbbf24';
+                });
+            } else {
+                // ACTIVAR MODE EXAMEN
+                btn.innerText = "Canviar a Mode Estudi";
+                btn.classList.remove('estudi-actiu');
+                document.querySelector('.stats-box').style.opacity = '1';
+                document.getElementById('btn-pista').style.display = 'inline-block';
+                
+                // Amagar i netejar buscador
+                document.getElementById('search-container').style.display = 'none';
+                document.getElementById('search-input').value = '';
+                document.getElementById('search-results').style.display = 'none';
+                
+                map.closePopup();
+                iniciarExamen();
+            }
+        }
+
+        function mostrarPista() {
+            if (currentTarget) {
+                document.getElementById('hint-text').innerText = "📍 " + currentTarget.hint;
+                document.getElementById('hint-text').style.display = 'block';
+            }
+        }
+
+        function iniciarExamen() {
+            pendingExamenTargets = [...targetLocations].sort(() => Math.random() - 0.5); 
+            score = 0;
+            document.getElementById('score').innerText = score;
+            document.getElementById('total-targets').innerText = targetLocations.length;
+            
+            Object.values(markers).forEach(m => {
+                // DESACTIVEM ELS POPUPS EN MODE EXAMEN PERQUÈ NO ET XIVIN LA RESPOSTA
+                m.unbindPopup();
+                m.unbindTooltip();
+                m.getElement().style.pointerEvents = 'auto';
+                m.getElement().style.backgroundColor = 'rgba(59, 130, 246, 0.6)';
+                m.getElement().style.borderColor = '#fff';
+            });
+
+            pickNextTarget();
+        }
+
+        function pickNextTarget() {
+            if (pendingExamenTargets.length === 0) {
+                finalitzarJoc();
+                return;
+            }
+            
+            currentTarget = pendingExamenTargets.pop();
+            document.getElementById('target-label').innerText = "On és...";
+            document.getElementById('target-name').innerText = currentTarget.name;
+            document.getElementById('hint-text').style.display = 'none';
+            
+            attempts = 4;
+            document.getElementById('attempts').innerText = attempts;
+        }
+
+        function finalitzarJoc() {
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('final-score').innerText = score;
+            
+            if (score === targetLocations.length) {
+                document.getElementById('modal-title').innerText = "Perfecte! 100% Encerts";
+                document.getElementById('modal-title').style.color = "#10b981";
+            } else {
+                document.getElementById('modal-title').innerText = "Examen Finalitzat";
+                document.getElementById('modal-title').style.color = "#fbbf24";
+            }
+        }
+
+        function reiniciarJoc() {
+            document.getElementById('modal').style.display = 'none';
+            map.setView([38.0, 90.0], 4);
+            iniciarExamen();
+        }
+
+        createMarkers();
+        document.getElementById('total-targets').innerText = targetLocations.length;
+        setTimeout(() => { iniciarExamen(); }, 500);
+
+    </script>
+<!-- ========================================== -->
+<!-- BOTÓ DE TORNAR A L'ATLES GLOBAL 3D         -->
+<!-- ========================================== -->
+<a href="index.html" class="btn-tornar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Tornar a l'Atles
+</a>
+
+<style>
+    .btn-tornar {
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        z-index: 99999; /* Assegura que sempre estigui per sobre de tot */
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 25px;
+        background: rgba(10, 15, 30, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50px;
+        color: #ffffff;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        overflow: hidden;
+    }
+
+    /* Icona de la fletxa */
+    .btn-tornar svg {
+        width: 22px;
+        height: 22px;
+        transition: transform 0.4s ease;
+    }
+
+    /* Efecte de llum que passa per sobre */
+    .btn-tornar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: all 0.5s ease;
+        z-index: -1;
+    }
+
+    /* Animacions al passar el ratolí */
+    .btn-tornar:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
+        transform: translateY(-3px);
+    }
+
+    .btn-tornar:hover svg {
+        transform: translateX(-5px); /* La fletxa es mou cap a l'esquerra */
+    }
+
+    .btn-tornar:hover::before {
+        left: 100%;
+    }
+</style>
+<!-- ========================================== -->
+
+</body>
+</html>
