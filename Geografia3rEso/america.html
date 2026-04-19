@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Geografia Amèrica - Estudi Lliure</title>
+    <!-- Leaflet CSS i JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-body: #020617;
+            --bg-card: #0f172a;
+            --bg-input: #1e293b;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
+            --success: #10b981;
+            --error: #f43f5e;
+            --warning: #f59e0b;
+            --bg-glass: rgba(15, 23, 42, 0.85);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --radius: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-body); }
+
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        /* Evitar que Leaflet mogui els punts internament amb CSS globals */
+        .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path { transition: none !important; }
+
+        /* --- UI OVERLAY --- */
+        .ui-layer {
+            position: absolute; top: 20px; left: 20px; right: 20px; z-index: 1000;
+            pointer-events: none; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;
+        }
+
+        .panel-glass {
+            background: var(--bg-glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass); border-radius: 16px; padding: 20px 25px;
+            pointer-events: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: border-color 0.3s ease;
+        }
+
+        /* Panell central (Pregunta i Temps) */
+        .target-panel {
+            flex: 1; max-width: 550px; text-align: center; display: flex; flex-direction: column;
+            align-items: center; border-bottom: 4px solid var(--accent);
+        }
+        .target-header { display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px; align-items: center; }
+        .target-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim); font-weight: 600; }
+        .timer-display { font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; font-weight: 700; color: var(--warning); background: rgba(245, 158, 11, 0.1); padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); }
+        
+        .target-word { font-size: 2.2rem; font-weight: 800; color: #fff; text-shadow: 0 0 15px rgba(56, 189, 248, 0.4); line-height: 1.2; margin: 10px 0; }
+        
+        .attempts-container { display: flex; gap: 8px; margin-top: 5px; }
+        .attempt-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--success); transition: background 0.3s; }
+        .attempt-dot.lost { background: rgba(255,255,255,0.1); }
+
+        /* Controls Laterals */
+        .controls-panel { display: flex; flex-direction: column; gap: 15px; min-width: 250px; }
+
+        .score-box { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-glass); margin-bottom: 5px; }
+        .score-val { font-size: 1.8rem; font-weight: 800; color: var(--success); }
+
+        .btn { background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-glass); padding: 12px 20px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+        .btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+        .btn-primary { background: var(--accent); color: #020617; border: none; }
+        .btn-primary:hover { background: #0ea5e9; transform: translateY(-2px); }
+
+        .svg-icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* --- ESTILS DELS MARCADORS CLAVATS (SENSE PROBLEMES DE ZOOM) --- */
+        .leaflet-div-icon { background: transparent; border: none; }
+        .game-marker-inner { width: 24px; height: 24px; background: rgba(56, 189, 248, 0.4); border: 2px solid #38bdf8; border-radius: 50%; box-sizing: border-box; box-shadow: 0 0 10px rgba(0,0,0,0.6); transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease; }
+        .leaflet-interactive:hover .game-marker-inner { background: rgba(56, 189, 248, 0.9); transform: scale(1.4); }
+        
+        .marker-study .game-marker-inner { background: rgba(245, 158, 11, 0.8); border-color: #fbbf24; }
+        .marker-correct .game-marker-inner { background: rgba(16, 185, 129, 0.95); border-color: #34d399; transform: scale(1.2); box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); }
+        .marker-failed .game-marker-inner { background: rgba(239, 68, 68, 0.95); border-color: #fca5a5; transform: scale(1.2); box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+        
+        .marker-solved, .marker-study { pointer-events: none !important; }
+        
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } }
+        .marker-shake .game-marker-inner { animation: shake 0.3s ease-in-out; background: rgba(239, 68, 68, 0.8); border-color: #f87171; }
+
+        /* Tooltips */
+        .leaflet-tooltip { background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-glass); color: white; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.9rem; padding: 4px 10px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: none; }
+        .leaflet-tooltip-top:before { border-top-color: rgba(15, 23, 42, 0.9); }
+        .leaflet-tooltip-bottom:before { border-bottom-color: rgba(15, 23, 42, 0.9); }
+        .tooltip-correct { background: rgba(16, 185, 129, 0.9); border-color: #10b981; }
+        .tooltip-correct.leaflet-tooltip-top:before { border-top-color: rgba(16, 185, 129, 0.9); }
+        .tooltip-failed { background: rgba(239, 68, 68, 0.9); border-color: #ef4444; }
+        .tooltip-failed.leaflet-tooltip-top:before { border-top-color: rgba(239, 68, 68, 0.9); }
+        .tooltip-study { background: rgba(245, 158, 11, 0.9); border-color: #f59e0b; }
+        .tooltip-study.leaflet-tooltip-top:before { border-top-color: rgba(245, 158, 11, 0.9); }
+
+        /* Modal final */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; pointer-events: auto; }
+        .modal-content { background: var(--bg-glass); backdrop-filter: blur(10px); border: 1px solid var(--border-glass); padding: 40px; border-radius: 20px; text-align: center; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.8); min-width: 350px; }
+        .modal-content h2 { font-size: 2.2rem; color: var(--accent); margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <!-- UI DEL JOC -->
+    <div class="ui-layer">
+        <!-- Logo / Title -->
+        <div class="panel-glass" style="padding: 15px 25px;">
+            <h2 style="font-size: 1.1rem; font-weight: 800; color: white; margin:0;">AMÈRICA FÍSICA</h2>
+            <span style="font-size: 0.8rem; color: var(--text-dim);" id="layer-indicator">Mapa Físic</span>
+        </div>
+
+        <!-- Target Panel (Pregunta actual) -->
+        <div class="panel-glass target-panel" id="main-target-panel">
+            <div class="target-header">
+                <span class="target-label" id="mode-label">Mode Examen</span>
+                <span class="timer-display" id="timer-display">00:00</span>
+            </div>
+            <div class="target-word" id="target-word">Preparant mapa...</div>
+            <div class="attempts-container" id="attempts-bar">
+                <div class="attempt-dot"></div><div class="attempt-dot"></div><div class="attempt-dot"></div><div class="attempt-dot"></div>
+            </div>
+        </div>
+
+        <!-- Controls i Puntuació -->
+        <div class="panel-glass controls-panel">
+            
+            <div class="score-box">
+                <div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Encerts</div>
+                    <div style="font-size: 0.85rem; color: white;" id="progress-text">0 de 26</div>
+                </div>
+                <div class="score-val" id="score-val">0</div>
+            </div>
+            
+            <button class="btn" id="btn-mode" onclick="toggleMode()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                Canviar a Estudi
+            </button>
+            <button class="btn btn-primary" onclick="toggleMapLayer()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                Canviar Capa Fons
+            </button>
+            <button class="btn" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4);" onclick="startExam()">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Reiniciar
+            </button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Examen Completat</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">Has encertat <strong style="color: var(--success);" id="final-score">0</strong> de <span id="final-total"></span>.</p>
+            <p id="final-time-text" style="font-size: 1rem; color: var(--text-dim); margin-bottom: 25px; font-family: 'JetBrains Mono', monospace;"></p>
+            <button class="btn btn-primary" style="padding: 15px 40px; font-size: 1.2rem;" onclick="startExam()">Tornar a jugar</button>
+        </div>
+    </div>
+
+    <!-- LÒGICA PRINCIPAL DEL JOC I MAPA -->
+    <script>
+        const locations = [
+            { id: "oc_artic", name: "Oceà Glacial Àrtic", lat: 80.0, lng: -100.0 },
+            { id: "oc_pacific", name: "Oceà Pacífic", lat: 0.0, lng: -100.0 },
+            { id: "oc_atlantic", name: "Oceà Atlàntic", lat: 20.0, lng: -45.0 },
+            { id: "mar_beaufort", name: "Mar de Beaufort", lat: 72.0, lng: -135.0 },
+            { id: "mar_labrador", name: "Mar del Labrador", lat: 58.0, lng: -55.0 },
+            { id: "mar_carib", name: "Mar del Carib", lat: 15.0, lng: -75.0 },
+            { id: "golf_alaska", name: "Golf d'Alaska", lat: 58.0, lng: -145.0 },
+            { id: "golf_mexic", name: "Golf de Mèxic", lat: 25.0, lng: -90.0 },
+            { id: "estret_bering", name: "Estret de Bering", lat: 65.9, lng: -169.0 },
+            { id: "estret_magallanes", name: "Estret de Magallanes", lat: -53.3, lng: -70.9 },
+            { id: "pen_alaska", name: "Península d'Alaska", lat: 56.0, lng: -159.0 },
+            { id: "pen_labrador", name: "Península del Labrador", lat: 54.0, lng: -68.0 },
+            { id: "pen_florida", name: "Península de Florida", lat: 28.0, lng: -82.0 },
+            { id: "pen_yucatan", name: "Península de Yucatán", lat: 19.5, lng: -89.0 },
+            { id: "illa_grenlandia", name: "Illa de Grenlàndia", lat: 72.0, lng: -40.0 },
+            { id: "illa_terranova", name: "Illa de Terranova", lat: 48.6, lng: -56.0 },
+            { id: "illa_cuba", name: "Illa de Cuba", lat: 21.5, lng: -79.0 },
+            { id: "illes_antilles", name: "Illes Antilles", lat: 18.0, lng: -66.0 },
+            { id: "rocalloses", name: "Serralada de les Rocalloses", lat: 44.0, lng: -110.0 },
+            { id: "apalatxes", name: "Muntanyes Apalatxes", lat: 38.0, lng: -80.0 },
+            { id: "andes", name: "Serralada dels Andes", lat: -20.0, lng: -68.0 },
+            { id: "plana_mississipi", name: "Plana del Mississipí", lat: 35.0, lng: -90.0 },
+            { id: "plana_amazones", name: "Plana de l'Amazones", lat: -3.0, lng: -60.0 },
+            { id: "alt_bolivia", name: "Altiplà de Bolívia", lat: -17.0, lng: -66.0 },
+            { id: "massis_guaianes", name: "Massís de les Guaianes", lat: 5.0, lng: -60.0 },
+            { id: "massis_brasil", name: "Massís de Brasil", lat: -15.0, lng: -50.0 }
+        ];
+
+        const map = L.map('map', { center: [20, -85], zoom: 3, minZoom: 2, maxZoom: 7, zoomControl: false });
+        const layerSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 8 });
+        const layerPhysical = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 8 });       
+        const layerDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', { attribution: '&copy; Carto' });
+
+        let mapLayerMode = 0; 
+        layerSatellite.addTo(map);
+
+        window.toggleMapLayer = function() {
+            mapLayerMode = (mapLayerMode + 1) % 3;
+            const indicator = document.getElementById('layer-indicator');
+            map.removeLayer(layerPhysical); map.removeLayer(layerSatellite); map.removeLayer(layerDark);
+
+            if (mapLayerMode === 0) { layerPhysical.addTo(map); indicator.innerText = "Mapa Físic"; }
+            else if (mapLayerMode === 1) { layerSatellite.addTo(map); indicator.innerText = "Satèl·lit Realista"; }
+            else { layerDark.addTo(map); indicator.innerText = "Mapa Fosc"; }
+        }
+
+        let isStudyMode = false;
+        let markers = {};
+        let pendingTargets = [];
+        let currentTarget = null;
+        let attempts = 4;
+        let score = 0;
+        let answeredCount = 0;
+
+        // TIMER VARIABLES
+        let timerInterval = null;
+        let elapsedSeconds = 0;
+
+        // FORMAT TEMPS
+        window.formatTime = function(seconds) {
+            const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const s = String(seconds % 60).padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function createMarkers() {
+            locations.forEach(loc => {
+                const icon = L.divIcon({ 
+                    className: 'leaflet-custom-container', 
+                    html: '<div class="game-marker-inner"></div>',
+                    iconSize: [24, 24], iconAnchor: [12, 12]
+                });
+                const marker = L.marker([loc.lat, loc.lng], { icon: icon, interactive: true }).addTo(map);
+                marker.isSolved = false;
+                marker.on('click', () => handleMarkerClick(loc.id));
+                markers[loc.id] = marker;
+            });
+        }
+
+        function handleMarkerClick(clickedId) {
+            if (isStudyMode || !currentTarget) return;
+            const clickedMarker = markers[clickedId];
+            const clickedElement = clickedMarker.getElement();
+
+            if (clickedMarker.isSolved) return;
+
+            const targetMarker = markers[currentTarget.id];
+            const targetElement = targetMarker.getElement();
+
+            if (clickedId === currentTarget.id) {
+                clickedMarker.isSolved = true;
+                L.DomUtil.addClass(clickedElement, 'marker-correct');
+                L.DomUtil.addClass(clickedElement, 'marker-solved');
+                
+                clickedMarker.unbindTooltip();
+                clickedMarker.bindTooltip(currentTarget.name, { permanent: true, direction: 'top', className: 'tooltip-correct', offset: [0,-12], interactive: false }).openTooltip();
+                
+                score++; answeredCount++; updateUIStats();
+                document.getElementById('main-target-panel').style.borderColor = "var(--success)";
+                setTimeout(() => { document.getElementById('main-target-panel').style.borderColor = "var(--accent)"; }, 1000);
+                setTimeout(nextQuestion, 1000);
+            } else {
+                attempts--; updateAttemptsUI();
+                L.DomUtil.addClass(clickedElement, 'marker-shake');
+                setTimeout(() => L.DomUtil.removeClass(clickedElement, 'marker-shake'), 300);
+
+                if (attempts <= 0) {
+                    targetMarker.isSolved = true;
+                    L.DomUtil.addClass(targetElement, 'marker-failed');
+                    L.DomUtil.addClass(targetElement, 'marker-solved');
+                    
+                    targetMarker.unbindTooltip();
+                    targetMarker.bindTooltip(currentTarget.name, { permanent: true, direction: 'top', className: 'tooltip-failed', offset: [0,-12], interactive: false }).openTooltip();
+                    
+                    answeredCount++; updateUIStats();
+                    document.getElementById('main-target-panel').style.borderColor = "var(--error)";
+                    setTimeout(() => { document.getElementById('main-target-panel').style.borderColor = "var(--accent)"; }, 2000);
+
+                    map.panTo([currentTarget.lat, currentTarget.lng], {animate: true, duration: 0.5});
+                    setTimeout(nextQuestion, 2000);
+                }
+            }
+        }
+
+        // CONTROL DE TEMPS
+        function startTimer() {
+            clearInterval(timerInterval);
+            elapsedSeconds = 0;
+            updateTimerDisplay();
+            document.getElementById('timer-display').style.visibility = 'visible';
+            
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('timer-display').innerText = window.formatTime(elapsedSeconds);
+        }
+
+        window.startExam = function() {
+            document.getElementById('modal').style.display = 'none';
+            pendingTargets = [...locations].sort(() => Math.random() - 0.5);
+            score = 0; answeredCount = 0; updateUIStats();
+            
+            Object.values(markers).forEach(m => {
+                m.isSolved = false;
+                const el = m.getElement();
+                L.DomUtil.removeClass(el, 'marker-correct'); L.DomUtil.removeClass(el, 'marker-failed');
+                L.DomUtil.removeClass(el, 'marker-study'); L.DomUtil.removeClass(el, 'marker-solved');
+                m.unbindTooltip();
+            });
+
+            startTimer();
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (pendingTargets.length === 0) { endExam(); return; }
+            currentTarget = pendingTargets.pop();
+            document.getElementById('target-word').innerText = currentTarget.name;
+            attempts = 4; updateAttemptsUI();
+        }
+
+        function endExam() {
+            currentTarget = null;
+            stopTimer();
+            
+            document.getElementById('target-word').innerText = "Examen Finalitzat";
+            document.getElementById('attempts-bar').style.visibility = 'hidden';
+            
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-total').innerText = locations.length;
+            
+            const timeStr = window.formatTime(elapsedSeconds);
+            let extraText = `Temps total: ${timeStr}`;
+
+            if(score === locations.length) {
+                extraText += "<br><br><span style='color:var(--success); font-weight:bold;'>🏆 100% assolit! Fantàstic!</span>";
+            } else {
+                extraText += `<br><br><span style='color:var(--warning); font-weight:bold;'>Has fallat ${locations.length - score} conceptes. Torna-ho a provar!</span>`;
+            }
+
+            document.getElementById('final-time-text').innerHTML = extraText;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        window.toggleMode = function() {
+            isStudyMode = !isStudyMode;
+            const btn = document.getElementById('btn-mode');
+            
+            if (isStudyMode) {
+                stopTimer();
+                btn.innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg> Canviar a Examen`;
+                document.getElementById('mode-label').innerText = "MODE ESTUDI";
+                document.getElementById('target-word').innerText = "Explora el mapa lliurement";
+                document.getElementById('attempts-bar').style.visibility = 'hidden';
+                document.getElementById('timer-display').style.visibility = 'hidden';
+                
+                Object.keys(markers).forEach(id => {
+                    const m = markers[id]; const el = m.getElement();
+                    L.DomUtil.removeClass(el, 'marker-correct'); L.DomUtil.removeClass(el, 'marker-failed');
+                    L.DomUtil.addClass(el, 'marker-study');
+                    const loc = locations.find(l => l.id === id);
+                    m.unbindTooltip();
+                    m.bindTooltip(loc.name, { permanent: true, direction: 'top', className: 'tooltip-study', offset: [0,-12], interactive: false }).openTooltip();
+                });
+            } else {
+                btn.innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Canviar a Estudi`;
+                document.getElementById('mode-label').innerText = "MODE EXAMEN";
+                document.getElementById('attempts-bar').style.visibility = 'visible';
+                window.startExam();
+            }
+        }
+
+        function updateUIStats() {
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('progress-text').innerText = `${answeredCount} de ${locations.length}`;
+        }
+
+        function updateAttemptsUI() {
+            document.getElementById('attempts-bar').style.visibility = 'visible';
+            const dots = document.querySelectorAll('.attempt-dot');
+            dots.forEach((dot, index) => {
+                if (index < attempts) dot.classList.remove('lost');
+                else dot.classList.add('lost');
+            });
+        }
+
+        // Arrencada del mapa
+        createMarkers();
+        setTimeout(window.startExam, 500);
+
+    </script>
+<!-- ========================================== -->
+<!-- BOTÓ DE TORNAR A L'ATLES GLOBAL 3D         -->
+<!-- ========================================== -->
+<a href="index.html" class="btn-tornar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Tornar a l'Atles
+</a>
+
+<style>
+    .btn-tornar {
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        z-index: 99999; /* Assegura que sempre estigui per sobre de tot */
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 25px;
+        background: rgba(10, 15, 30, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50px;
+        color: #ffffff;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        overflow: hidden;
+    }
+
+    /* Icona de la fletxa */
+    .btn-tornar svg {
+        width: 22px;
+        height: 22px;
+        transition: transform 0.4s ease;
+    }
+
+    /* Efecte de llum que passa per sobre */
+    .btn-tornar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: all 0.5s ease;
+        z-index: -1;
+    }
+
+    /* Animacions al passar el ratolí */
+    .btn-tornar:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
+        transform: translateY(-3px);
+    }
+
+    .btn-tornar:hover svg {
+        transform: translateX(-5px); /* La fletxa es mou cap a l'esquerra */
+    }
+
+    .btn-tornar:hover::before {
+        left: 100%;
+    }
+</style>
+<!-- ========================================== -->
+
+</body>
+</html>
