@@ -468,5 +468,80 @@
         setTimeout(window.startExam, 500);
 
     </script>
+    <!-- ========================================== -->
+<!-- BOTÓ DE TORNAR A L'ATLES GLOBAL 3D         -->
+<!-- ========================================== -->
+<a href="index.html" class="btn-tornar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Tornar a l'Atles
+</a>
+
+<style>
+    .btn-tornar {
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        z-index: 99999; /* Assegura que sempre estigui per sobre de tot */
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 25px;
+        background: rgba(10, 15, 30, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50px;
+        color: #ffffff;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        overflow: hidden;
+    }
+
+    /* Icona de la fletxa */
+    .btn-tornar svg {
+        width: 22px;
+        height: 22px;
+        transition: transform 0.4s ease;
+    }
+
+    /* Efecte de llum que passa per sobre */
+    .btn-tornar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: all 0.5s ease;
+        z-index: -1;
+    }
+
+    /* Animacions al passar el ratolí */
+    .btn-tornar:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
+        transform: translateY(-3px);
+    }
+
+    .btn-tornar:hover svg {
+        transform: translateX(-5px); /* La fletxa es mou cap a l'esquerra */
+    }
+
+    .btn-tornar:hover::before {
+        left: 100%;
+    }
+</style>
+<!-- ========================================== -->
 </body>
 </html>
