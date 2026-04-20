@@ -113,7 +113,7 @@
         <!-- Logo / Title -->
         <div class="panel-glass" style="padding: 15px 25px;">
             <h2 style="font-size: 1.1rem; font-weight: 800; color: white; margin:0;">AMÈRICA FÍSICA</h2>
-            <span style="font-size: 0.8rem; color: var(--text-dim);" id="layer-indicator">Mapa Físic</span>
+            <span style="font-size: 0.8rem; color: var(--text-dim);" id="layer-indicator">Satèl·lit Realista</span>
         </div>
 
         <!-- Target Panel (Pregunta actual) -->
@@ -134,7 +134,7 @@
             <div class="score-box">
                 <div>
                     <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Encerts</div>
-                    <div style="font-size: 0.85rem; color: white;" id="progress-text">0 de 26</div>
+                    <div style="font-size: 0.85rem; color: white;" id="progress-text">0 de 64</div>
                 </div>
                 <div class="score-val" id="score-val">0</div>
             </div>
@@ -167,50 +167,108 @@
 
     <!-- LÒGICA PRINCIPAL DEL JOC I MAPA -->
     <script>
+        // DADES GEOGRÀFIQUES D'AMÈRICA (Actualitzat segons fotos, 64 conceptes)
         const locations = [
+            // Oceans i Mars
             { id: "oc_artic", name: "Oceà Glacial Àrtic", lat: 80.0, lng: -100.0 },
             { id: "oc_pacific", name: "Oceà Pacífic", lat: 0.0, lng: -100.0 },
             { id: "oc_atlantic", name: "Oceà Atlàntic", lat: 20.0, lng: -45.0 },
             { id: "mar_beaufort", name: "Mar de Beaufort", lat: 72.0, lng: -135.0 },
             { id: "mar_labrador", name: "Mar del Labrador", lat: 58.0, lng: -55.0 },
             { id: "mar_carib", name: "Mar del Carib", lat: 15.0, lng: -75.0 },
+            
+            // Golfs i Badies
             { id: "golf_alaska", name: "Golf d'Alaska", lat: 58.0, lng: -145.0 },
             { id: "golf_mexic", name: "Golf de Mèxic", lat: 25.0, lng: -90.0 },
+            { id: "badia_hudson", name: "Badia d'Hudson", lat: 60.0, lng: -85.0 },
+            
+            // Estrets
             { id: "estret_bering", name: "Estret de Bering", lat: 65.9, lng: -169.0 },
             { id: "estret_magallanes", name: "Estret de Magallanes", lat: -53.3, lng: -70.9 },
+            
+            // Penínsules
             { id: "pen_alaska", name: "Península d'Alaska", lat: 56.0, lng: -159.0 },
             { id: "pen_labrador", name: "Península del Labrador", lat: 54.0, lng: -68.0 },
+            { id: "pen_nova_escocia", name: "Península de Nova Escòcia", lat: 45.0, lng: -63.0 },
             { id: "pen_florida", name: "Península de Florida", lat: 28.0, lng: -82.0 },
             { id: "pen_yucatan", name: "Península de Yucatán", lat: 19.5, lng: -89.0 },
+            
+            // Caps
+            { id: "cap_hornos", name: "Cap d'Hornos", lat: -55.9, lng: -67.2 },
+            { id: "cap_sant_roc", name: "Cap de Sant Roc", lat: -5.4, lng: -35.2 },
+            { id: "cap_blanc", name: "Cap Blanc", lat: -7.1, lng: -34.8 }, 
+            
+            // Illes i Arxipèlags
+            { id: "illes_aleutianes", name: "Illes Aleutianes", lat: 52.0, lng: -174.0 },
+            { id: "illa_baffin", name: "Illa de Baffin", lat: 69.0, lng: -72.0 },
             { id: "illa_grenlandia", name: "Illa de Grenlàndia", lat: 72.0, lng: -40.0 },
             { id: "illa_terranova", name: "Illa de Terranova", lat: 48.6, lng: -56.0 },
+            { id: "illes_bermudes", name: "Illes Bermudes", lat: 32.3, lng: -64.7 },
+            { id: "illes_bahames", name: "Illes Bahames", lat: 24.2, lng: -76.0 },
             { id: "illa_cuba", name: "Illa de Cuba", lat: 21.5, lng: -79.0 },
             { id: "illes_antilles", name: "Illes Antilles", lat: 18.0, lng: -66.0 },
+            { id: "illes_galapagos", name: "Illes Galápagos", lat: -0.5, lng: -90.5 },
+            { id: "illa_terra_foc", name: "Illa de la Terra del Foc", lat: -54.0, lng: -69.0 },
+            { id: "illes_malvines", name: "Illes Malvines", lat: -51.7, lng: -59.5 },
+            
+            // Relleu
             { id: "rocalloses", name: "Serralada de les Rocalloses", lat: 44.0, lng: -110.0 },
             { id: "apalatxes", name: "Muntanyes Apalatxes", lat: 38.0, lng: -80.0 },
+            { id: "sierra_madre_or", name: "Sierra Madre Oriental", lat: 23.0, lng: -99.0 },
+            { id: "sierra_madre_occ", name: "Sierra Madre Occidental", lat: 25.0, lng: -106.0 },
             { id: "andes", name: "Serralada dels Andes", lat: -20.0, lng: -68.0 },
             { id: "plana_mississipi", name: "Plana del Mississipí", lat: 35.0, lng: -90.0 },
             { id: "plana_amazones", name: "Plana de l'Amazones", lat: -3.0, lng: -60.0 },
             { id: "alt_bolivia", name: "Altiplà de Bolívia", lat: -17.0, lng: -66.0 },
             { id: "massis_guaianes", name: "Massís de les Guaianes", lat: 5.0, lng: -60.0 },
-            { id: "massis_brasil", name: "Massís de Brasil", lat: -15.0, lng: -50.0 }
+            { id: "massis_brasil", name: "Massís de Brasil", lat: -15.0, lng: -50.0 },
+            
+            // Rius
+            { id: "riu_mackenzie", name: "Riu Mackenzie", lat: 69.2, lng: -135.0 },
+            { id: "riu_yukon", name: "Riu Yukon", lat: 62.5, lng: -164.8 },
+            { id: "riu_colorado", name: "Riu Colorado", lat: 31.8, lng: -114.8 },
+            { id: "riu_grande", name: "Riu Grande", lat: 25.9, lng: -97.1 },
+            { id: "riu_sant_llorenc", name: "Riu Sant Llorenç", lat: 49.0, lng: -64.5 },
+            { id: "riu_mississipi", name: "Riu Mississipí", lat: 29.1, lng: -89.2 },
+            { id: "riu_missouri", name: "Riu Missouri", lat: 38.8, lng: -90.1 },
+            { id: "riu_orinoco", name: "Riu Orinoco", lat: 8.6, lng: -60.5 },
+            { id: "riu_amazones", name: "Riu Amazones", lat: 0.7, lng: -50.0 },
+            { id: "riu_parana", name: "Riu Paranà", lat: -34.0, lng: -58.4 },
+            { id: "riu_paraguai", name: "Riu Paraguai", lat: -27.3, lng: -58.6 },
+            { id: "riu_uruguai", name: "Riu Uruguai", lat: -34.0, lng: -58.3 },
+            { id: "riu_de_la_plata", name: "Riu de la Plata", lat: -35.0, lng: -57.0 },
+            
+            // Llacs
+            { id: "llac_ossos", name: "Gran Llac dels Óssos", lat: 66.0, lng: -120.5 },
+            { id: "llac_esclaus", name: "Gran Llac dels Esclaus", lat: 61.6, lng: -114.0 },
+            { id: "llac_winnipeg", name: "Llac Winnipeg", lat: 52.1, lng: -97.2 },
+            { id: "llac_superior", name: "Llac Superior", lat: 47.7, lng: -87.5 },
+            { id: "llac_michigan", name: "Llac Michigan", lat: 44.0, lng: -87.0 },
+            { id: "llac_huron", name: "Llac Huron", lat: 44.8, lng: -82.4 },
+            { id: "llac_erie", name: "Llac Erie", lat: 42.2, lng: -81.2 },
+            { id: "llac_ontario", name: "Llac Ontario", lat: 43.7, lng: -77.9 },
+            { id: "llac_nicaragua", name: "Llac Nicaragua", lat: 11.5, lng: -85.3 },
+            { id: "llac_maracaibo", name: "Llac Maracaibo", lat: 9.8, lng: -71.5 },
+            { id: "llac_titicaca", name: "Llac Titicaca", lat: -15.8, lng: -69.3 }
         ];
 
         const map = L.map('map', { center: [20, -85], zoom: 3, minZoom: 2, maxZoom: 7, zoomControl: false });
+
+        const layerPhysical = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 8 });
         const layerSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 8 });
-        const layerPhysical = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 8 });       
         const layerDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', { attribution: '&copy; Carto' });
 
+        // 0: Satèl·lit (Principal), 1: Físic (Secundari), 2: Fosc
         let mapLayerMode = 0; 
-        layerSatellite.addTo(map);
+        layerSatellite.addTo(map); // Iniciem amb Satèl·lit per defecte
 
         window.toggleMapLayer = function() {
             mapLayerMode = (mapLayerMode + 1) % 3;
             const indicator = document.getElementById('layer-indicator');
             map.removeLayer(layerPhysical); map.removeLayer(layerSatellite); map.removeLayer(layerDark);
 
-            if (mapLayerMode === 0) { layerPhysical.addTo(map); indicator.innerText = "Mapa Físic"; }
-            else if (mapLayerMode === 1) { layerSatellite.addTo(map); indicator.innerText = "Satèl·lit Realista"; }
+            if (mapLayerMode === 0) { layerSatellite.addTo(map); indicator.innerText = "Satèl·lit Realista"; }
+            else if (mapLayerMode === 1) { layerPhysical.addTo(map); indicator.innerText = "Mapa Físic"; }
             else { layerDark.addTo(map); indicator.innerText = "Mapa Fosc"; }
         }
 
@@ -402,86 +460,13 @@
             });
         }
 
+        // Fix de l'indicador a l'arrencada amb el nombre exacte total d'ubicacions
+        document.getElementById('progress-text').innerText = `0 de ${locations.length}`;
+
         // Arrencada del mapa
         createMarkers();
         setTimeout(window.startExam, 500);
 
     </script>
-<!-- ========================================== -->
-<!-- BOTÓ DE TORNAR A L'ATLES GLOBAL 3D         -->
-<!-- ========================================== -->
-<a href="index.html" class="btn-tornar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-    </svg>
-    Tornar a l'Atles
-</a>
-
-<style>
-    .btn-tornar {
-        position: fixed;
-        bottom: 30px;
-        left: 30px;
-        z-index: 99999; /* Assegura que sempre estigui per sobre de tot */
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 25px;
-        background: rgba(10, 15, 30, 0.65);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 50px;
-        color: #ffffff;
-        font-family: 'Montserrat', sans-serif;
-        font-size: 0.95rem;
-        font-weight: 600;
-        text-decoration: none;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-        overflow: hidden;
-    }
-
-    /* Icona de la fletxa */
-    .btn-tornar svg {
-        width: 22px;
-        height: 22px;
-        transition: transform 0.4s ease;
-    }
-
-    /* Efecte de llum que passa per sobre */
-    .btn-tornar::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: all 0.5s ease;
-        z-index: -1;
-    }
-
-    /* Animacions al passar el ratolí */
-    .btn-tornar:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.5);
-        box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
-        transform: translateY(-3px);
-    }
-
-    .btn-tornar:hover svg {
-        transform: translateX(-5px); /* La fletxa es mou cap a l'esquerra */
-    }
-
-    .btn-tornar:hover::before {
-        left: 100%;
-    }
-</style>
-<!-- ========================================== -->
-
 </body>
 </html>
