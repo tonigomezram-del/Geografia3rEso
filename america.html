@@ -468,7 +468,9 @@
         setTimeout(window.startExam, 500);
 
     </script>
-    <a href="index.html" class="btn-tornar-fixed">
+   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+
+<a href="index.html" class="btn-tornar-fixed">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;">
         <line x1="19" y1="12" x2="5" y2="12"></line>
         <polyline points="12 19 5 12 12 5"></polyline>
@@ -481,15 +483,13 @@
         position: fixed !important;
         bottom: 30px !important;
         left: 30px !important;
-        width: auto !important;
-        height: auto !important;
-        z-index: 2147483647 !important; /* El valor màxim possible en navegadors */
+        z-index: 2147483647 !important; /* El màxim possible */
         display: flex !important;
         align-items: center !important;
         gap: 10px !important;
         padding: 15px 30px !important;
-        background-color: #0f172a !important;
-        border: 2px solid #38bdf8 !important;
+        background-color: #0f172a !important; /* Blau fosc sòlid */
+        border: 2px solid #38bdf8 !important; /* Blau accent */
         border-radius: 50px !important;
         color: #ffffff !important;
         font-family: 'Montserrat', sans-serif !important;
@@ -511,7 +511,6 @@
         box-shadow: 0 15px 40px rgba(56, 189, 248, 0.6) !important;
     }
 
-    /* Forçar que la fletxa es mogui al hover */
     .btn-tornar-fixed:hover svg {
         transform: translateX(-5px) !important;
     }
